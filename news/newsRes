@@ -1,0 +1,58 @@
+def getnews(url):
+    import time
+    import requests
+    from bs4 import BeautifulSoup
+    # 请求的首部信息
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.146 Safari/537.36'
+    }
+    # 例子的url
+    # url = 'http://wap.dlxww.com/news/node_4841.htm'  # 大连新闻
+    # 利用requests对象的get方法，对指定的url发起请求
+    # 该方法会返回一个Response对象
+    res = requests.get(url, headers=headers)
+    # 网页编码设置为utf-8
+    res.encoding = 'utf-8'
+    # 通过Response对象的text方法获取网页的文本信息
+    # print(res.text)
+
+    # 通过bs截取网页指定内容
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    # 找出class属性值为acticle的div
+    news = soup.select('.articleList >ul > li > a')
+    print(news)
+    # 本地建立text文档
+    fp = open('大连新闻.txt', 'w', encoding='utf8')
+    for i in news:
+        title = i.text
+        t0 =title.split()[0]+'.txt'
+        # 将单条新闻存到单独文件
+        sfp = open(r'./news/'+t0, 'w', encoding='utf8')
+        newsurl = 'http://wap.dlxww.com/news/' + i['href']
+        print(newsurl)
+        # 该方法会返回一个Response对象
+        re = requests.get(newsurl, headers=headers)
+        # 网页编码设置为utf-8
+        re.encoding = 'utf-8'
+        print('正在将新闻“' + i.text + '”存入文件，稍等......')
+        time.sleep(2)
+        try:
+            # 通过bs截取网页指定内容
+            subsoup = BeautifulSoup(re.text, 'lxml')
+            newcontent = subsoup.find('div', {'class': 'content'})
+            print(newcontent.text)
+
+            print('已经将新闻“' + i.text + '”存入文件！！！！！')
+            newString = '%s\n%s' % (title, newcontent.text)
+            singlestring = '%s\n%s' % (title.split()[0], newcontent.text)
+        except AttributeError as e:
+            continue
+        sfp.write(singlestring)
+        fp.write(newString)
+    fp.close()
+
+
+if __name__ == '__main__':
+    getnews('http://wap.dlxww.com/news/node_4821.htm')
+

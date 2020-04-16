@@ -1,0 +1,71 @@
+def getnews(url):
+    import time
+    import requests
+    from bs4 import BeautifulSoup
+    # 请求的首部信息
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.146 Safari/537.36'
+    }
+    # 例子的url
+    # url = 'http://wap.dlxww.com/news/node_4841.htm'  # 大连新闻
+    # 利用requests对象的get方法，对指定的url发起请求
+    # 该方法会返回一个Response对象
+    res = requests.get(url, headers=headers)
+    # 网页编码设置为utf-8
+    res.encoding = 'utf-8'
+    # 通过Response对象的text方法获取网页的文本信息
+
+    # 通过bs截取网页指定内容
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    # 找出class属性值为acticle的div
+    news = soup.select('.articleList >ul > li > a')
+    print(news)
+
+    # 便利新闻导入新闻到数据库
+    for i in news:
+        title = i.text
+        # 新闻标题
+        t0 = str(title.split()[0])
+
+        newsurl = 'http://wap.dlxww.com/news/' + i['href']
+        print(newsurl)
+        # 该方法会返回一个Response对象
+        re = requests.get(newsurl, headers=headers)
+        # 网页编码设置为utf-8
+        re.encoding = 'utf-8'
+        print('正在将新闻“' + i.text + '”存入数据库，稍等......')
+        time.sleep(2)
+        # 本地建立mysql链接
+        import mysql.connector
+        conn = mysql.connector.connect(host='114.116.101.9', port='53306', user='root', password='123456', db='edb',
+                                       charset='utf8')
+        curser = conn.cursor()
+        # 获取当前系统时间
+        import datetime
+
+        try:
+            # 通过bs截取网页指定内容
+            subsoup = BeautifulSoup(re.text, 'lxml')
+            newcontent = str(subsoup.find('div', {'class': 'content'}).text)
+            newfrom = str(subsoup.find('div', {'class': 'data'}).text.split()[-1])
+            print(newcontent)
+            now_time = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+            # 向数据库插入新闻
+            insert_news = """INSERT INTO srkj_news (NEWS_TYPE,NEWS_TITLE,NEWS_CONTENT,CREATE_TIME,UPDATE_TIME,NEWS_FROM) 
+            VALUES (%s,%s,%s,%s,%s,%s) """
+            news_values = ('01', t0, newcontent, now_time, now_time, newfrom)
+            curser.execute(insert_news, news_values)
+            # 提交事务
+            conn.commit()
+            curser.close()
+            print('已经将新闻“' + i.text + '”上传至服务器！！！！！')
+
+            # singlestring = '%s\n%s' % (title.split()[0], newcontent.text)
+        except AttributeError as e:
+            continue
+
+
+if __name__ == '__main__':
+    getnews('http://wap.dlxww.com/news/node_4821_2.htm')
